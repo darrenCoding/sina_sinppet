@@ -1,0 +1,15 @@
+{
+  "name": "sina Jiaju gadgets",
+  "title": "gadgets",
+  "description": "",
+  "version": "0.7.0",
+  "homepage": "https://github.com/cookiy/jiaju_sinppet",
+  "author": {
+    "name": "\"cookiy\"",
+    "url": "http://hidali.com/"
+  },
+  "dependencies": {
+    "jquery": "1.7"
+  },
+  "keywords": ["pub", "sub", "pubsub", "event", "subscribe", "publish", "trigger"]
+}
