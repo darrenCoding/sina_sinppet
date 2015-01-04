@@ -36,7 +36,6 @@ var jQuery = new factory();
     window.jQuery = window.$ = jQuery;
 })(winodw);
 
-
 if (typeof module === "object" && typeof module.exports === "object") {
     module.exports = global.document ?
         factory(global, true) :
@@ -48,4 +47,4 @@ if (typeof module === "object" && typeof module.exports === "object") {
     };
 } else {
     factory(global);
-}
+};
