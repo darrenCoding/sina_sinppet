@@ -18,8 +18,6 @@
     	};
     };
 })();
-
-
 // 单例模式
 var factory = function () {
     return function () {
