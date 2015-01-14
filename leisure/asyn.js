@@ -29,6 +29,8 @@ jQuery.extend({
             };
 
     },
+
+    
     when: function(func) {
         return deferred.promise();
     }
