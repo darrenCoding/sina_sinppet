@@ -31,8 +31,5 @@ jQuery.extend({
     },
     when: function(func) {
         return deferred.promise();
-    }，
-    change:function  (argument) {
-        // body...
     }
 });
