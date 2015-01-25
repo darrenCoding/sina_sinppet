@@ -8,7 +8,9 @@ function Data() {
 	this.expando = jQuery.expando + _Math.random();
 };
 Data.uid = 1;
+
 Data.accepts = jQuery.acceptData;
+
 Data.prototype = {
 	key: function() {},
 	set: function() {},
