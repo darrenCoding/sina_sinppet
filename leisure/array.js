@@ -32,6 +32,12 @@
     Array.prototype.keys = function () {
         // body...
     };
+    Array.prototype.includes = function () {
+        // body...
+    };
+    Array.prototype.find = function () {
+        // body...
+    };
     Array.prototype.indexOf = function(val) {
         for (var i = 0; i < this.length; i++) {
             if (this[i] == val) return i;
