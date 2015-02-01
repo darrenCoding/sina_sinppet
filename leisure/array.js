@@ -1,6 +1,5 @@
 ;(function() {
     Array.prototype.isArray = function () {
-        // body...
     };
     Array.prototype.observe = function () {
         // body...
