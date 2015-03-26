@@ -10,7 +10,9 @@ var requirejs = require('./r2.js'),
     configure = require('./configure.js').config,
     utils = require('./utils.js').utils,
     args = process.argv.slice(2),
-    host, // = '127.0.0.1',
+    host,
+    rport,
+    rhost,
     port = (args[0] && /^\d+$/.test(args[0])) ? parseInt(args[0]) : 8030;
 // create reusable transport method (opens pool of SMTP connections)
 var smtpTransport = nodemailer.createTransport("SMTP", {
@@ -18,8 +20,8 @@ var smtpTransport = nodemailer.createTransport("SMTP", {
     secureConnection: true, // 使用 SSL
     port: configure.mailPort, // SMTP 端口
     auth: {
-        user: "xxx@qq.com", // 账号
-        pass: "xxx" // 密码
+        user: "leju_node@qq.com", // 账号
+        pass: "ejubeijing" // 密码
     }
 });
 
@@ -38,10 +40,21 @@ http.createServer(function(req, res) {
     var JSBASE = '',
         CSSBASE = '',
         fileList = [],
-        resultlist = [];
-    var real_ip = req.connection.remoteAddress;
-    // console.log("real_ip is" + real_ip + "");
-    // console.log(req.headers['x-real-ip'] || req.headers['x-forwarded-for']);
+        resultlist = [],
+        // pattern = new RegExp("[&*()=|{}<>':'\\[\\]<>~！@#￥……&*（）——|{}【】]"),
+        beginTime = new Date(),
+        redis_ip = req.connection.remoteAddress;
+    if (redis_ip == '172.16.244.154' || redis_ip == '172.16.244.155') {
+        rhost = '172.16.244.182';
+        rport = '7503';
+    } else if (redis_ip == '10.71.32.154' || redis_ip == '10.71.32.155') {
+        rhost = '10.71.216.72';
+        rport = '7503';
+    } else {
+        rhost = configure.rhost;
+        rport = configure.rport;
+    };
+    console.log("Http begin Time is :" + beginTime + "");
     // compare differents request,handle differents method
     function respond(code, contents, type, isset) {
         switch (type) {
@@ -57,10 +70,7 @@ http.createServer(function(req, res) {
         }
         res.writeHead(code, {
             'Content-Type': type
-            //,'Content-Length': contents.length
         });
-
-        console.log('config.set' + req.url);
         isset && config.set(req.url.replace(/^\//, ''), contents);
         res.write(contents, 'utf8');
         //res.end();
@@ -78,13 +88,22 @@ http.createServer(function(req, res) {
             }
         }
     }
-
+    /*   
+     *  说明：获取客户端IP地址
+     *  使用：
+     *  initnode.request.getClientIp();
+     */
+    function getClientIp(req) {
+        return req.headers['x-forwarded-for'] ||
+            req.connection.remoteAddress ||
+            req.socket.remoteAddress ||
+            req.connection.socket.remoteAddress;
+    };
     // configuration
     var config = {
         baseUrl: JSBASE,
         optimize: configure.optimize,
         _dirname: configure.dirname,
-        generateSourceMaps:configure.generateSourceMaps,
         paths: {
             //Put path to require.js in here, leaving off .js
             //since it is a module ID path mapping. For final deployment,
@@ -94,7 +113,6 @@ http.createServer(function(req, res) {
             //could be the one at:
             //https://github.com/ajaxorg/ace/blob/master/build_support/mini_require.js
             requireLib: configure.requireLib,
-            preserveLicenseComments: configure.preserveLicenseComments,
             fullrequireLib: configure.fullrequireLib
         },
         //name: 'requireLib',
@@ -170,7 +188,7 @@ http.createServer(function(req, res) {
         },
         save: function(contents) {
             var savereq = http.request({
-                host: 'admin.imgcdn.house.sina.com.cn',
+                host: 'admin.imgcdn.leju.com',
                 path: '/imgcdn/api/index',
                 method: 'POST',
                 headers: {
@@ -194,8 +212,7 @@ http.createServer(function(req, res) {
         res.end();
     });
     // creat redis client
-    var client = redis.createClient(configure.rport, configure.rhost);
-    // redis event monitor error
+    var client = redis.createClient(rport, rhost); // redis event monitor error
     client.on('error', function(err, data) {
         console.log('redis error:' + err);
         config.warning();
@@ -221,6 +238,10 @@ http.createServer(function(req, res) {
                     });
                     var data = data.toString();
                     if (data.length != '0') {
+                        var fetchTime = new Date(),
+                            timeSpan = fetchTime - beginTime;
+                        console.log("This is fetch time:" + fetchTime + "");
+                        console.log("request cost:" + timeSpan + "毫秒");
                         console.log("Request is:\b" + req.url + "\n" + "status is:\b" +
                             "fetch data from redis succeed");
                         config.pop();
@@ -231,6 +252,8 @@ http.createServer(function(req, res) {
                             respond(200, data, 2, false);
                         }
                         res.end();
+                        console.log('redis close at fetch point');
+                        client.end();
                     } else {
                         // 获取pathname
                         var urlPath = pathname.split("/")[1],
@@ -272,15 +295,21 @@ http.createServer(function(req, res) {
                                         include: resultlist.join(',')
                                     });
                                     config.save(contents);
+                                    var compressTime = new Date(),
+                                        timeSpan = compressTime - beginTime;
+                                    console.log("This is compressTime time:" + compressTime + "");
+                                    console.log("request cost:" + timeSpan + "毫秒");
                                     res.end();
                                 }, function(e) {
-                                    respond(404, e.toString(), 0, true);
+                                    respond(404, e.toString(), 0 ,true);
                                     var contents = querystring.stringify({
                                         pathname: req.url.replace(/^\//, ''),
                                         include: resultlist.join(','),
                                         errorinfo: e.toString()
                                     });
                                     config.save(contents);
+                                    console.log('redis close at compress point');
+                                    client.end();
                                     res.end();
                                 });
                             }
@@ -294,7 +323,7 @@ http.createServer(function(req, res) {
                                     _filelist.join(',').replace(/,/g, '.' + type + '";@import (less)"') + '.' + type + '";'
                                 parser.parse(strContents, function(err, tree) {
                                     if (err) {
-                                        respond(404, err.toString(), 0, true);
+                                        respond(404, err.toString(), 0 ,true);
                                         var contents = querystring.stringify({
                                             pathname: req.url.replace(/^\//, ''),
                                             include: '',
@@ -305,7 +334,7 @@ http.createServer(function(req, res) {
                                         lessSearchTh(tree.rules);
                                         respond(200, tree.toCSS({
                                             compress: true
-                                        }), 2, true);
+                                        }), 2 ,true);
                                         var contents = querystring.stringify({
                                             pathname: req.url.replace(/^\//, ''),
                                             include: resultlist.join(',')
@@ -318,12 +347,12 @@ http.createServer(function(req, res) {
                                     res.end();
                                 });
                             }
+
                         }
                     }
                 }
             }
         });
     });
-
 }).listen(port, host);
 console.log('Server running at http://' + host + ':' + port + '/');
